@@ -1,17 +1,21 @@
 package main
 
-import "fmt"
+import (
+	"atomcourse/api"
+	"log"
+	"net/http"
 
-func greet(name string) {
-	fmt.Printf("Hello %s", name)
-}
-
-func twoPlusTwo() int {
-	return 2 + 2
-}
+	"github.com/gorilla/mux"
+)
 
 func main() {
-	greet("Gleb!\n")
 
-	fmt.Println("2 + 2: ", twoPlusTwo())
+	// Init Rouer
+	r := mux.NewRouter()
+
+	// Mock Data - @todo - implement DB
+
+	// Route Handlers / Endpoints
+	r.HandleFunc("/news", api.HandleNews).Methods("GET")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
