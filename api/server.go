@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 )
 
 type Cat_Fact struct {
@@ -14,25 +13,6 @@ type Cat_Fact struct {
 }
 
 type Space_Fact struct {
-	Count    int         `json:"count"`
-	Next     string      `json:"next"`
-	Previous interface{} `json:"previous"`
-	Results  []struct {
-		ID          int       `json:"id"`
-		Title       string    `json:"title"`
-		URL         string    `json:"url"`
-		ImageURL    string    `json:"image_url"`
-		NewsSite    string    `json:"news_site"`
-		Summary     string    `json:"summary"`
-		PublishedAt time.Time `json:"published_at"`
-		UpdatedAt   time.Time `json:"updated_at"`
-		Featured    bool      `json:"featured"`
-		Launches    []struct {
-			LaunchID string `json:"launch_id"`
-			Provider string `json:"provider"`
-		} `json:"launches"`
-		Events []interface{} `json:"events"`
-	} `json:"results"`
 }
 
 func parseCatFacts() []Cat_Fact {
