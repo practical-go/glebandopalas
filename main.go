@@ -8,31 +8,40 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, world!")
-	})
 	http.HandleFunc("/news", handleNews)
 	http.ListenAndServe(":8080", nil)
 }
 
 func handleNews(w http.ResponseWriter, r *http.Request) {
-	space_limit := r.FormValue("tag")
+	limit := r.FormValue("limit")
+	tag := r.FormValue("tag")
+	var space_err, cats_error error
 	var spaceflightNews []SpaceflightNews
-	var err error
+	var catFacts []CatFact
 
-	if space_limit == "" {
-		spaceflightNews, err = fetchSpaceflightNews()
+	switch tag {
+	case "space":
+		if limit == "" {
+			spaceflightNews, space_err = fetchSpaceflightNews("10")
+		} else {
+			spaceflightNews, space_err = fetchSpaceflightNews(limit)
+		}
+		if space_err != nil {
+			http.Error(w, "Error fetching news", http.StatusInternalServerError)
+			return
+		}
+	case "cats":
+		if limit == "" {
+			catFacts, cats_error = fetchCatFacts("2")
+		} else {
+			catFacts, cats_error = fetchCatFacts(limit)
+		}
+		if cats_error != nil {
+			http.Error(w, "Error fetching facts", http.StatusInternalServerError)
+			return
+		}
 	}
 
-	if err != nil {
-		http.Error(w, "Error fetching news", http.StatusInternalServerError)
-		return
-	}
-	catFacts, err := fetchCatFacts()
-	if err != nil {
-		http.Error(w, "Error fetching news", http.StatusInternalServerError)
-		return
-	}
 	var news []News
 	for i, sf, cf := 1, 0, 0; i <= 10; i++ {
 		if i%3 != 0 && sf < len(spaceflightNews) {
@@ -74,8 +83,8 @@ type News struct {
 	Summary string `json:"summary"`
 }
 
-func fetchCatFacts() ([]CatFact, error) {
-	body, err := getRequest("https://cat-fact.herokuapp.com/facts")
+func fetchCatFacts(limit string) ([]CatFact, error) {
+	body, err := getRequest(fmt.Sprintf("https://cat-fact.herokuapp.com/facts/random?animal_type=cat&amount=%s", limit))
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +97,8 @@ func fetchCatFacts() ([]CatFact, error) {
 	return catFacts, nil
 }
 
-func fetchSpaceflightNews() ([]SpaceflightNews, error) {
-	body, err := getRequest("https://api.spaceflightnewsapi.net/v3/articles?_limit=10")
+func fetchSpaceflightNews(limit string) ([]SpaceflightNews, error) {
+	body, err := getRequest(fmt.Sprintf("https://api.spaceflightnewsapi.net/v3/articles?_limit=%s", limit))
 	if err != nil {
 		return nil, err
 	}
