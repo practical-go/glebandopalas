@@ -10,12 +10,12 @@ import (
 
 type CatFacts struct {
 	Title   string `json:"Title"`
-	Summary string `json:"summary"`
+	Summary string `json:"Summary"`
 }
 
 type SpaceNews struct {
-	Title   string `json:"title"`
-	Summary string `json:"summary"`
+	Title   string `json:"Title"`
+	Summary string `json:"Summary"`
 }
 
 type News struct {
@@ -24,15 +24,18 @@ type News struct {
 }
 
 func handleNews(w http.ResponseWriter, r *http.Request) {
-	space_news, err := fetchSpaceNews("https://api.spaceflightnewsapi.net/v4/articles/")
+	space_limit := r.FormValue("tag")
+
+	fmt.Println(space_limit)
+
+	space_news, err := fetchSpaceNews(space_limit)
 
 	if err != nil {
 		http.Error(w, "Error has occured", http.StatusInternalServerError)
-		fmt.Println(err)
 		return
 	}
 
-	cat_facts, err := fetchCatFacts("https://cat-fact.herokuapp.com/facts/")
+	cat_facts, err := fetchCatFacts()
 	if err != nil {
 		http.Error(w, "Error has occured", http.StatusInternalServerError)
 		return
@@ -44,7 +47,6 @@ func handleNews(w http.ResponseWriter, r *http.Request) {
 				Title:   space_news[sn].Title,
 				Summary: space_news[sn].Summary,
 			})
-
 			cf++
 		} else {
 			news = append(news, News{
@@ -66,13 +68,14 @@ func handleNews(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
-func fetchCatFacts(url string) ([]CatFacts, error) {
-	body, err := getRequest(url)
+func fetchCatFacts() ([]CatFacts, error) {
+	body, err := getRequest("https://cat-fact.herokuapp.com/facts")
 	if err != nil {
 		return nil, err
 	}
 
 	var catfacts []CatFacts
+	json.MarshalIndent(body, "", "    ")
 	err = json.Unmarshal(body, &catfacts)
 	if err != nil {
 		return nil, err
@@ -80,8 +83,8 @@ func fetchCatFacts(url string) ([]CatFacts, error) {
 	return catfacts, nil
 }
 
-func fetchSpaceNews(url string) ([]SpaceNews, error) {
-	body, err := getRequest(url)
+func fetchSpaceNews(limit string) ([]SpaceNews, error) {
+	body, err := getRequest("https://api.spaceflightnewsapi.net/v3/articles?_limit=10")
 
 	if err != nil {
 		return nil, err
@@ -90,7 +93,7 @@ func fetchSpaceNews(url string) ([]SpaceNews, error) {
 	var spacenews []SpaceNews
 	err = json.Unmarshal(body, &spacenews)
 	if err != nil {
-		fmt.Println("pop")
+		log.Fatal(err)
 		return nil, err
 	}
 	return spacenews, nil
@@ -111,13 +114,7 @@ func getRequest(url string) ([]byte, error) {
 	return body, nil
 }
 
-func newsTag(w http.ResponseWriter, req *http.Request) {
-	v := req.FormValue("tag")
-	fmt.Fprintln(w, "Do my search: "+v)
-}
-
 func main() {
-	http.HandleFunc("/", foo)
 	http.HandleFunc("/news", handleNews)
 	http.ListenAndServe(":8000", nil)
 }
