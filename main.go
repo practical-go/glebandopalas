@@ -4,18 +4,69 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
-type CatFacts struct {
-	Title   string `json:"Title"`
-	Summary string `json:"Summary"`
+func main() {
+	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello, world!")
+	})
+	http.HandleFunc("/news", handleNews)
+	http.ListenAndServe(":8080", nil)
 }
 
-type SpaceNews struct {
-	Title   string `json:"Title"`
-	Summary string `json:"Summary"`
+func handleNews(w http.ResponseWriter, r *http.Request) {
+	space_limit := r.FormValue("tag")
+	var spaceflightNews []SpaceflightNews
+	var err error
+
+	if space_limit == "" {
+		spaceflightNews, err = fetchSpaceflightNews()
+	}
+
+	if err != nil {
+		http.Error(w, "Error fetching news", http.StatusInternalServerError)
+		return
+	}
+	catFacts, err := fetchCatFacts()
+	if err != nil {
+		http.Error(w, "Error fetching news", http.StatusInternalServerError)
+		return
+	}
+	var news []News
+	for i, sf, cf := 1, 0, 0; i <= 10; i++ {
+		if i%3 != 0 && sf < len(spaceflightNews) {
+			news = append(news, News{
+				Title:   spaceflightNews[sf].Title,
+				Summary: spaceflightNews[sf].Summary,
+			})
+			sf++
+		} else if cf < len(catFacts) {
+			news = append(news, News{
+				Title:   "Cat fact \U0001f63a",
+				Summary: catFacts[cf].Text,
+			})
+			cf++
+		}
+	}
+	jsonData, err := json.Marshal(news)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET")
+	w.Write(jsonData)
+}
+
+type CatFact struct {
+	Text string `json:"text"`
+}
+
+type SpaceflightNews struct {
+	Title   string `json:"title"`
+	Summary string `json:"summary"`
 }
 
 type News struct {
@@ -23,86 +74,38 @@ type News struct {
 	Summary string `json:"summary"`
 }
 
-func handleNews(w http.ResponseWriter, r *http.Request) {
-	space_limit := r.FormValue("tag")
-
-	fmt.Println(space_limit)
-
-	space_news, err := fetchSpaceNews(space_limit)
-
-	if err != nil {
-		http.Error(w, "Error has occured", http.StatusInternalServerError)
-		return
-	}
-
-	cat_facts, err := fetchCatFacts()
-	if err != nil {
-		http.Error(w, "Error has occured", http.StatusInternalServerError)
-		return
-	}
-	var news []News
-	for i, sn, cf := 1, 1, 1; i <= 10; i++ {
-		if i%3 != 0 && sn < len(space_news) {
-			news = append(news, News{
-				Title:   space_news[sn].Title,
-				Summary: space_news[sn].Summary,
-			})
-			cf++
-		} else {
-			news = append(news, News{
-				Title:   "Cat Fact",
-				Summary: cat_facts[cf].Summary,
-			})
-			sn++
-		}
-	}
-	jsonData, err := json.Marshal(news)
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET")
-	w.Write(jsonData)
-}
-
-func fetchCatFacts() ([]CatFacts, error) {
+func fetchCatFacts() ([]CatFact, error) {
 	body, err := getRequest("https://cat-fact.herokuapp.com/facts")
 	if err != nil {
 		return nil, err
 	}
 
-	var catfacts []CatFacts
-	json.MarshalIndent(body, "", "    ")
-	err = json.Unmarshal(body, &catfacts)
+	var catFacts []CatFact
+	err = json.Unmarshal(body, &catFacts)
 	if err != nil {
 		return nil, err
 	}
-	return catfacts, nil
+	return catFacts, nil
 }
 
-func fetchSpaceNews(limit string) ([]SpaceNews, error) {
+func fetchSpaceflightNews() ([]SpaceflightNews, error) {
 	body, err := getRequest("https://api.spaceflightnewsapi.net/v3/articles?_limit=10")
-
 	if err != nil {
 		return nil, err
 	}
 
-	var spacenews []SpaceNews
-	err = json.Unmarshal(body, &spacenews)
+	var news []SpaceflightNews
+	err = json.Unmarshal(body, &news)
 	if err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
-	return spacenews, nil
+	return news, nil
 }
 
 func getRequest(url string) ([]byte, error) {
 	response, err := http.Get(url)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer response.Body.Close()
 
@@ -112,9 +115,5 @@ func getRequest(url string) ([]byte, error) {
 	}
 
 	return body, nil
-}
 
-func main() {
-	http.HandleFunc("/news", handleNews)
-	http.ListenAndServe(":8000", nil)
 }
